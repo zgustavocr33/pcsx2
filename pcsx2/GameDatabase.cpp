@@ -367,6 +367,7 @@ static const char* s_gs_hw_fix_names[] = {
 	"estimateTextureRegion",
 	"PCRTCOffsets",
 	"PCRTCOverscan",
+	"preRoundSprites",
 	"mipmap",
 	"trilinearFiltering",
 	"skipDrawStart",
@@ -413,6 +414,7 @@ bool GameDatabaseSchema::isUserHackHWFix(GSHWFixId id)
 		case GSHWFixId::Deinterlace:
 		case GSHWFixId::Mipmap:
 		case GSHWFixId::TexturePreloading:
+		case GSHWFixId::PreRoundSprites:
 		case GSHWFixId::TrilinearFiltering:
 		case GSHWFixId::MinimumBlendingLevel:
 		case GSHWFixId::MaximumBlendingLevel:
@@ -750,6 +752,10 @@ void GameDatabaseSchema::GameEntry::applyGSHardwareFixes(Pcsx2Config::GSOptions&
 
 			case GSHWFixId::PCRTCOverscan:
 				config.PCRTCOverscan = (value > 0);
+				break;
+
+			case GSHWFixId::PreRoundSprites:
+				config.PreRoundSprites = (value > 0);
 				break;
 
 			case GSHWFixId::Mipmap:
