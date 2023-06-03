@@ -401,7 +401,7 @@ protected:
 	std::unique_ptr<GSDownloadTexture> m_uint16_download_texture;
 	std::unique_ptr<GSDownloadTexture> m_uint32_download_texture;
 
-	Source* CreateSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, Target* t, bool half_right, int x_offset, int y_offset, const GSVector2i* lod, const GSVector4i* src_range, GSTexture* gpu_clut, SourceRegion region);
+	Source* CreateSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, Target* t, bool half_right, int x_offset, int y_offset, const GSVector2i* lod, const GSVector4i* src_range, GSTexture* gpu_clut, SourceRegion region, bool convert_8bit = false);
 	Target* CreateTarget(const GIFRegTEX0& TEX0, int w, int h, float scale, int type, const bool clear);
 
 	/// Expands a target when the block pointer for a display framebuffer is within another target, but the read offset

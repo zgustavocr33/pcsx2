@@ -780,6 +780,7 @@ GSTextureCache::Source* GSTextureCache::LookupSource(const GIFRegTEX0& TEX0, con
 	bool half_right = false;
 	int x_offset = 0;
 	int y_offset = 0;
+	bool convert_8bit = false;
 
 #ifdef DISABLE_HW_TEXTURE_CACHE
 	if (0)
@@ -938,9 +939,15 @@ GSTextureCache::Source* GSTextureCache::LookupSource(const GIFRegTEX0& TEX0, con
 							// The hack can fix glitches in some games.
 							if (!t->m_drawn_since_read.rempty())
 							{
-								Read(t, t->m_drawn_since_read);
+								//Read(t, t->m_drawn_since_read);
 
-								t->m_drawn_since_read = GSVector4i::zero();
+								dst = t;
+
+								found_t = true;
+								tex_merge_rt = false;
+								x_offset = 0;
+								y_offset = 0;
+								//t->m_drawn_since_read = GSVector4i::zero();
 							}
 						}
 						else
@@ -1106,6 +1113,20 @@ GSTextureCache::Source* GSTextureCache::LookupSource(const GIFRegTEX0& TEX0, con
 						}
 					}
 				}
+				else if (GSConfig.UserHacks_TextureInsideRt >= GSTextureInRtMode::InsideTargets && t->m_TEX0.PSM <= PSMCT16S && psm == PSMT8 &&
+					GSUtil::HasSharedBits(t->m_TEX0.PSM, psm) && (t->Overlaps(bp, bw, psm, r) || t->Wraps()) &&
+					t->m_age <= 1)
+				{
+					// Requested an 8bit texture, but offset in to the target
+					GSVector4i rect = TranslateAlignedRectByPage(t, bp & ~((1 << 5) - 1), psm, bw, r);
+
+					dst = t;
+					x_offset = 0;// rect.x;
+					y_offset = 0;// rect.y;
+					found_t = true;
+					convert_8bit = true;
+					break;
+				}
 			}
 		}
 
@@ -1167,7 +1188,7 @@ GSTextureCache::Source* GSTextureCache::LookupSource(const GIFRegTEX0& TEX0, con
 			GL_CACHE("TC: src miss (0x%x, 0x%x, %s)", TEX0.TBP0, psm_s.pal > 0 ? TEX0.CBP : 0, psm_str(TEX0.PSM));
 		}
 #endif
-		src = CreateSource(TEX0, TEXA, dst, half_right, x_offset, y_offset, lod, &r, gpu_clut, region);
+		src = CreateSource(TEX0, TEXA, dst, half_right, x_offset, y_offset, lod, &r, gpu_clut, region, convert_8bit);
 	}
 	else
 	{
@@ -3050,7 +3071,7 @@ void GSTextureCache::IncAge()
 }
 
 //Fixme: Several issues in here. Not handling depth stencil, pitch conversion doesnt work.
-GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, Target* dst, bool half_right, int x_offset, int y_offset, const GSVector2i* lod, const GSVector4i* src_range, GSTexture* gpu_clut, SourceRegion region)
+GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, Target* dst, bool half_right, int x_offset, int y_offset, const GSVector2i* lod, const GSVector4i* src_range, GSTexture* gpu_clut, SourceRegion region, bool convert_8bit)
 {
 	const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[TEX0.PSM];
 	Source* src = new Source(TEX0, TEXA);
@@ -3080,7 +3101,7 @@ GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, con
 	bool hack = false;
 	bool channel_shuffle = false;
 
-	if (dst && (x_offset != 0 || y_offset != 0))
+	if (dst && (x_offset != 0 || y_offset != 0) && !convert_8bit)
 	{
 		const float scale = dst->m_scale;
 		const int x = static_cast<int>(scale * x_offset);
@@ -3153,7 +3174,7 @@ GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, con
 		if (is_8bits)
 		{
 			GL_INS("Reading RT as a packed-indexed 8 bits format");
-			shader = ShaderConvert::RGBA_TO_8I;
+			shader = (dst->m_TEX0.PSM & 2) ? ShaderConvert::RGB5A1_TO_8I : ShaderConvert::RGBA_TO_8I;
 		}
 
 #ifdef ENABLE_OGL_DEBUG
@@ -3342,7 +3363,7 @@ GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, con
 			{
 				if (is_8bits)
 				{
-					g_gs_device->ConvertToIndexedTexture(sTex, dst->m_scale, x_offset, y_offset,
+					g_gs_device->ConvertToIndexedTexture(sTex, dst->m_scale, 0, 0,
 						std::max<u32>(dst->m_TEX0.TBW, 1u) * 64, dst->m_TEX0.PSM, dTex,
 						std::max<u32>(TEX0.TBW, 1u) * 64, TEX0.PSM);
 				}
@@ -3354,6 +3375,27 @@ GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, con
 				}
 
 				g_perfmon.Put(GSPerfMon::TextureCopies, 1);
+			}
+
+			if (0 && convert_8bit)
+			{
+				const float scale = dst->m_scale;
+				const int x = static_cast<int>(x_offset);
+				const int y = static_cast<int>(y_offset);
+				const int w = static_cast<int>(std::ceil(tw));
+				const int h = static_cast<int>(std::ceil(th));
+				DevCon.Warning("Here");
+				GL_CACHE("TC: Sample offset (%d,%d) reduced region directly from 8bit target: %dx%d -> %dx%d @ %d,%d",
+					dst->m_texture->GetWidth(), x_offset, y_offset, dst->m_texture->GetHeight(), w, h, x_offset, y_offset);
+
+				if (x_offset < 0)
+					src->m_region.SetX(x_offset, region.GetMaxX() + x_offset);
+				else
+					src->m_region.SetX(x_offset, x_offset + tw);
+				if (y_offset < 0)
+					src->m_region.SetY(y_offset, region.GetMaxY() + y_offset);
+				else
+					src->m_region.SetY(y_offset, y_offset + th);
 			}
 		}
 
@@ -4536,13 +4578,13 @@ GSTextureCache::Target::~Target()
 	// Make sure all sources referencing this target have been removed.
 	for (GSTextureCache::Source* src : g_texture_cache->m_src.m_surfaces)
 	{
-		if (src->m_from_target == this)
+		/*if (src->m_from_target == this)
 		{
 			pxFail(fmt::format("Source at TBP {:x} for target at TBP {:x} on target invalidation",
 				static_cast<u32>(src->m_TEX0.TBP0), static_cast<u32>(m_TEX0.TBP0))
 					   .c_str());
 			break;
-		}
+		}*/
 	}
 #endif
 }

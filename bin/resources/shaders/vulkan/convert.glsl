@@ -291,6 +291,85 @@ void ps_convert_rgba_8i()
 }
 #endif
 
+#ifdef ps_convert_rgb5a1_8i
+layout(push_constant) uniform cb10
+{
+	uint SBW;
+	uint DBW;
+	uvec2 cb_pad1;
+	float ScaleFactor;
+	vec3 cb_pad2;
+};
+
+void ps_convert_rgb5a1_8i()
+{
+	// Convert a RGBA texture into a 8 bits packed texture
+	// Input column: 16x2 RGBA pixels
+	// 0: 16 RGBA
+	// 1: 16 RGBA
+	// Output column: 16x4 Index pixels
+	// 0: 16 R5G3
+	// 1: 16 R5G3
+	// 2: 16 G2B5A1
+	// 3: 16 G2B5A1
+	const uint lookup[32] = uint[32](0, 2, 1, 3, 16, 18, 17, 19,
+									 8, 10, 9, 11, 24, 26, 25, 27,
+									 4, 6, 5, 7, 20, 22, 21, 23,
+									 12, 14, 13, 15, 28, 30, 29, 31);
+	/*const uint lookup[32] = uint[32](0, 2, 1, 3, 16, 18, 17, 19,
+									 4, 6, 5, 7, 20, 22, 21, 23,
+									 8, 10, 9, 11, 24, 26, 25, 27,
+									 12, 14, 13, 15, 28, 30, 29, 31);*/
+	/*const uint lookup[32] = uint[32](0, 2, 1, 3, 16, 18, 17, 19,
+									 8, 10, 9, 11, 24, 26, 25, 27,
+									 4, 6, 5, 7, 20, 22, 21, 23,
+									 12, 14, 13, 15, 28, 30, 29, 31);*/
+	/*const uint lookup[32] = uint[32](0, 2, 1, 3,
+									 8, 10, 9, 11,
+									 4, 6, 5, 7,
+									 12, 14, 13, 15,
+									 16, 18, 17, 19,
+									 24, 26, 25, 27,
+									 20, 22, 21, 23,
+									 28, 30, 29, 31);*/
+	uvec2 pos = uvec2(gl_FragCoord.xy);
+
+	// Collapse separate R G B A areas into their base pixel
+	uvec2 block = (pos & ~uvec2(15u, 3u));
+	block.y = block.y >> 1;
+	uvec2 subblock = pos & uvec2(15u, 1u);
+	uvec2 coord = block | subblock;
+
+	// Compensate for potentially differing page pitch.
+	uvec2 page_xy = coord / uvec2(64u, 64u);
+	uint page_num = (page_xy.y * (DBW / 128u)) + page_xy.x;
+	uvec2 page_offset = uvec2((page_num % (SBW / 64u)) * 64u, (page_num / (SBW / 64u)) * 64u);
+
+	// Apply offset to cols 1 and 2
+	uint is_col23 = pos.y & 4u;
+	uint is_col13 = pos.y & 2u;
+	uint is_col12 = is_col23 ^ (is_col13 << 1);
+	coord.x ^= is_col12; // If cols 1 or 2, flip bit 3 of x
+
+	uvec2 block_translate = coord & uvec2(63u, 63u);
+	uint block_index = lookup[((block_translate.y / 8) * 4) + (block_translate.x / 16)];
+	uvec2 block_coords = uvec2((block_index & 3) * 16, (block_index / 4) * 8); 
+	coord = (coord % uvec2(16, 8)) + page_offset + block_coords;
+	
+	if (floor(ScaleFactor) != ScaleFactor)
+		coord = uvec2(vec2(coord) * ScaleFactor);
+	else
+		coord *= uvec2(ScaleFactor);
+
+	vec4 pixel = texelFetch(samp0, ivec2(coord), 0) * vec4(255.0f);
+	uvec4 pixel_uint = uvec4(pixel);
+	uint rg = ((pixel_uint.r >> 3) | ((pixel_uint.g & 0xfc) << 2)) & 0xff;
+	uint gba = ((pixel_uint.g >> 6) | ((pixel_uint.b >> 1) & ~0x3) | (pixel_uint.a & 0x80)) & 0xff;
+	float sel0 = (pos.y & 2u) == 0u ? float(rg) : float(gba);
+	o_col0 = vec4(sel0 / 255.0f); 
+}
+#endif
+
 #ifdef ps_convert_clut_4
 layout(push_constant) uniform cb10
 {

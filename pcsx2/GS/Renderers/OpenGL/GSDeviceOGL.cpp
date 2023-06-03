@@ -334,7 +334,7 @@ bool GSDeviceOGL::Create()
 				return false;
 			m_convert.ps[i].SetFormattedName("Convert pipe %s", name);
 
-			if (static_cast<ShaderConvert>(i) == ShaderConvert::RGBA_TO_8I)
+			if (static_cast<ShaderConvert>(i) == ShaderConvert::RGBA_TO_8I || static_cast<ShaderConvert>(i) == ShaderConvert::RGB5A1_TO_8I)
 			{
 				m_convert.ps[i].RegisterUniform("SBW");
 				m_convert.ps[i].RegisterUniform("DBW");
@@ -1423,7 +1423,7 @@ void GSDeviceOGL::UpdateCLUTTexture(GSTexture* sTex, float sScale, u32 offsetX, 
 
 void GSDeviceOGL::ConvertToIndexedTexture(GSTexture* sTex, float sScale, u32 offsetX, u32 offsetY, u32 SBW, u32 SPSM, GSTexture* dTex, u32 DBW, u32 DPSM)
 {
-	const ShaderConvert shader = ShaderConvert::RGBA_TO_8I;
+	const ShaderConvert shader = (SPSM & 2) ? ShaderConvert::RGB5A1_TO_8I : ShaderConvert::RGBA_TO_8I;
 	GLProgram& prog = m_convert.ps[static_cast<int>(shader)];
 	prog.Bind();
 	prog.Uniform1ui(0, SBW);

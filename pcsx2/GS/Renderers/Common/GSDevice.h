@@ -48,6 +48,7 @@ enum class ShaderConvert
 	RGB5A1_TO_FLOAT16_BILN,
 	DEPTH_COPY,
 	RGBA_TO_8I,
+	RGB5A1_TO_8I,
 	CLUT_4,
 	CLUT_8,
 	YUV,
