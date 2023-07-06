@@ -112,11 +112,19 @@ void ps_hdr_init()
 }
 #endif
 
-#ifdef ps_hdr_resolve
-void ps_hdr_resolve()
+#ifdef ps_hdr_wrap_resolve
+void ps_hdr_wrap_resolve()
 {
 	vec4 value = sample_c(v_tex);
 	o_col0 = vec4(vec3(uvec3(value.rgb * 65535.5f) & 255u) / 255.0f, value.a);
+}
+#endif
+
+#ifdef ps_hdr_clamp_resolve
+void ps_hdr_clamp_resolve()
+{
+	vec4 value = sample_c(v_tex);
+	o_col0 = vec4(vec3(uvec3(clamp(value.rgb * 65535.0f, 0u, 255u))) / 255.0f, value.a);
 }
 #endif
 

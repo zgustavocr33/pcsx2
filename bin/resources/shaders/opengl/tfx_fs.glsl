@@ -756,7 +756,7 @@ void ps_color_clamp_wrap(inout vec3 C)
 	// Warning: normally blending equation is mult(A, B) = A * B >> 7. GPU have the full accuracy
 	// GS: Color = 1, Alpha = 255 => output 1
 	// GPU: Color = 1/255, Alpha = 255/255 * 255/128 => output 1.9921875
-#if PS_DFMT == FMT_16 && PS_BLEND_MIX == 0
+#if PS_DFMT == FMT_16 && PS_BLEND_MIX == 0 && PS_HDR < 2
 	// In 16 bits format, only 5 bits of colors are used. It impacts shadows computation of Castlevania
 	C = vec3(ivec3(C) & ivec3(0xF8));
 #elif PS_COLCLIP == 1 || PS_HDR == 1
@@ -896,9 +896,15 @@ float As = As_rgba.a;
 	// When any color channel is higher than 128 then adjust the compensation automatically
 	// to give us more accurate colors, otherwise they will be wrong.
 	// The higher the value (>128) the lower the compensation will be.
-	float max_color = max(max(Color.r, Color.g), Color.b);
-	float color_compensate = 255.0f / max(128.0f, max_color);
-	Color.rgb *= vec3(color_compensate);
+	// We can use hdr to go over the 255 range.
+	#if PS_HDR > 1
+		float color_compensate = 255.0f / 128.0f;
+		Color.rgb *= vec3(color_compensate);
+	#else
+		float max_color = max(max(Color.r, Color.g), Color.b);
+		float color_compensate = 255.0f / max(128.0f, max_color);
+		Color.rgb *= vec3(color_compensate);
+	#endif
 #endif
 
 #endif
@@ -1042,7 +1048,7 @@ void ps_main()
 	ps_fbmask(C);
 
 #if !PS_NO_COLOR
-	#if PS_HDR == 1
+	#if PS_HDR != 0
 		SV_Target0 = vec4(C.rgb / 65535.0f, C.a / 255.0f);
 	#else
 		SV_Target0 = C / 255.0f;

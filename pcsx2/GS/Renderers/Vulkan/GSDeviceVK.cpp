@@ -3940,7 +3940,7 @@ bool GSDeviceVK::CompileConvertPipelines()
 					(i >> 3) & 1u);
 			}
 		}
-		else if (i == ShaderConvert::HDR_INIT || i == ShaderConvert::HDR_RESOLVE)
+		else if (i == ShaderConvert::HDR_INIT || i == ShaderConvert::HDR_WRAP_RESOLVE)
 		{
 			const bool is_setup = i == ShaderConvert::HDR_INIT;
 			VkPipeline (&arr)[2][2] = *(is_setup ? &m_hdr_setup_pipelines : &m_hdr_finish_pipelines);

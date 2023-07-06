@@ -32,7 +32,8 @@ enum class ShaderConvert
 	DATM_1,
 	DATM_0,
 	HDR_INIT,
-	HDR_RESOLVE,
+	HDR_WRAP_RESOLVE,
+	HDR_CLAMP_RESOLVE,
 	TRANSPARENCY_FILTER,
 	FLOAT32_TO_16_BITS,
 	FLOAT32_TO_32_BITS,
@@ -329,7 +330,7 @@ struct alignas(16) GSHWDrawConfig
 				u32 fixed_one_a : 1;
 				u32 blend_hw    : 2;
 				u32 a_masked    : 1;
-				u32 hdr         : 1;
+				u32 hdr         : 2;
 				u32 colclip     : 1;
 				u32 blend_mix   : 2;
 				u32 round_inv   : 1; // Blending will invert the value, so rounding needs to go the other way

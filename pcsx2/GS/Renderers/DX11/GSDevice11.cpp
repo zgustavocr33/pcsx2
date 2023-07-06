@@ -2337,7 +2337,7 @@ void GSDevice11::RenderHW(GSHWDrawConfig& config)
 		const GSVector2i size = config.rt->GetSize();
 		const GSVector4 dRect(config.drawarea);
 		const GSVector4 sRect = dRect / GSVector4(size.x, size.y).xyxy();
-		StretchRect(hdr_rt, sRect, config.rt, dRect, ShaderConvert::HDR_RESOLVE, false);
+		StretchRect(hdr_rt, sRect, config.rt, dRect, config.ps.hdr == 3 ? ShaderConvert::HDR_CLAMP_RESOLVE : ShaderConvert::HDR_WRAP_RESOLVE, false);
 		g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 		Recycle(hdr_rt);
 	}

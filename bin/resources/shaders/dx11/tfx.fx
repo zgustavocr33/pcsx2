@@ -804,7 +804,7 @@ void ps_color_clamp_wrap(inout float3 C)
 			C = clamp(C, (float3)0.0f, (float3)255.0f);
 
 		// In 16 bits format, only 5 bits of color are used. It impacts shadows computation of Castlevania
-		if (PS_DFMT == FMT_16 && PS_BLEND_MIX == 0)
+		if (PS_DFMT == FMT_16 && PS_BLEND_MIX == 0 && PS_HDR < 2)
 			C = (float3)((int3)C & (int3)0xF8);
 		else if (PS_COLCLIP == 1 || PS_HDR == 1)
 			C = (float3)((int3)C & (int3)0xFF);
@@ -916,9 +916,19 @@ void ps_blend(inout float4 Color, inout float4 As_rgba, float2 pos_xy)
 			// When any color channel is higher than 128 then adjust the compensation automatically
 			// to give us more accurate colors, otherwise they will be wrong.
 			// The higher the value (>128) the lower the compensation will be.
-			float max_color = max(max(Color.r, Color.g), Color.b);
-			float color_compensate = 255.0f / max(128.0f, max_color);
-			Color.rgb *= (float3)color_compensate;
+			// We can use hdr to go over the 255 range without any automatic compensation but it will be slower.
+
+			if (PS_HDR > 1)
+			{
+				float color_compensate = 255.0f / 128.0f;
+				Color.rgb *= (float3)color_compensate;
+			}
+			else
+			{
+				float max_color = max(max(Color.r, Color.g), Color.b);
+				float color_compensate = 255.0f / max(128.0f, max_color);
+				Color.rgb *= (float3)color_compensate;
+			}
 		}
 	}
 }

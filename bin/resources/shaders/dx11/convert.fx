@@ -133,11 +133,19 @@ PS_OUTPUT ps_hdr_init(PS_INPUT input)
 	return output;
 }
 
-PS_OUTPUT ps_hdr_resolve(PS_INPUT input)
+PS_OUTPUT ps_hdr_wrap_resolve(PS_INPUT input)
 {
 	PS_OUTPUT output;
 	float4 value = sample_c(input.t);
 	output.c = float4(float3(uint3(value.rgb * 65535.5) & 255) / 255, value.a);
+	return output;
+}
+
+PS_OUTPUT ps_hdr_clamp_resolve(PS_INPUT input)
+{
+	PS_OUTPUT output;
+	float4 value = sample_c(input.t);
+	output.c = float4(float3(uint3(clamp(value.rgb * 65535.5, 0, 255))) / 255, value.a);
 	return output;
 }
 

@@ -2397,7 +2397,7 @@ bool GSDevice12::CompileConvertPipelines()
 					i & 1u, (i >> 1) & 1u, (i >> 2) & 1u, (i >> 3) & 1u);
 			}
 		}
-		else if (i == ShaderConvert::HDR_INIT || i == ShaderConvert::HDR_RESOLVE)
+		else if (i == ShaderConvert::HDR_INIT || i == ShaderConvert::HDR_WRAP_RESOLVE)
 		{
 			const bool is_setup = i == ShaderConvert::HDR_INIT;
 			std::array<ComPtr<ID3D12PipelineState>, 2>& arr = is_setup ? m_hdr_setup_pipelines : m_hdr_finish_pipelines;
