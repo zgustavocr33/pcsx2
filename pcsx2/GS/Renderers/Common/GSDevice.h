@@ -219,9 +219,9 @@ enum HWBlendFlags
 {
 	// Flags to determine blending behavior
 	BLEND_CD      = 0x1,   // Output is Cd, hw blend can handle it
-	BLEND_HW_CLR1 = 0x2,   // Clear color blending (use directly the destination color as blending factor)
-	BLEND_HW_CLR2 = 0x4,   // Clear color blending (use directly the destination color as blending factor)
-	BLEND_HW_CLR3 = 0x8,   // Multiply Cs by (255/128) to compensate for wrong Ad/255 value, should be Ad/128
+	BLEND_HW1     = 0x2,   // Clear color blending (use directly the destination color as blending factor)
+	BLEND_HW2     = 0x4,   // Clear color blending (use directly the destination color as blending factor)
+	BLEND_HW3     = 0x8,   // Multiply Cs by (255/128) to compensate for wrong Ad/255 value, should be Ad/128
 	BLEND_MIX1    = 0x10,  // Mix of hw and sw, do Cs*F or Cs*As in shader
 	BLEND_MIX2    = 0x20,  // Mix of hw and sw, do Cs*(As + 1) or Cs*(F + 1) in shader
 	BLEND_MIX3    = 0x40,  // Mix of hw and sw, do Cs*(1 - As) or Cs*(1 - F) in shader

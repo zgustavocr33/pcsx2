@@ -3676,10 +3676,10 @@ void GSRendererHW::EmulateBlending(int rt_alpha_min, int rt_alpha_max, bool& DAT
 	const bool one_barrier = m_conf.require_one_barrier || blend_ad_alpha_masked;
 
 	// Blend can be done on hw. As and F cases should be accurate.
-	// BLEND_HW_CLR1 with Ad, BLEND_HW_CLR3  Cs > 0.5f will require sw blend.
-	// BLEND_HW_CLR1 with As/F and BLEND_HW_CLR2 can be done in hw.
-	const bool clr_blend = !!(blend_flag & (BLEND_HW_CLR1 | BLEND_HW_CLR2 | BLEND_HW_CLR3));
-	bool clr_blend1_2 = (blend_flag & (BLEND_HW_CLR1 | BLEND_HW_CLR2)) && (m_conf.ps.blend_c != 1) && !blend_ad_improved // Make sure it isn't an Ad case
+	// BLEND_HW1 with Ad, BLEND_HW3  Cs > 0.5f will require sw blend.
+	// BLEND_HW1 with As/F and BLEND_HW2 can be done in hw.
+	const bool hw_blend = !!(blend_flag & (BLEND_HW1 | BLEND_HW2 | BLEND_HW3));
+	bool hw_blend1_2 = (blend_flag & (BLEND_HW1 | BLEND_HW2)) && (m_conf.ps.blend_c != 1) && !blend_ad_improved // Make sure it isn't an Ad case
 						&& !(m_draw_env->PABE.PABE && GetAlphaMinMax().min < 128) // No PABE as it will require sw blending.
 						&& (COLCLAMP.CLAMP) // Let's add a colclamp check too, hw blend will clamp to 0-1.
 						&& !(one_barrier || m_conf.require_full_barrier); // Also don't run if there are barriers present.
@@ -3707,7 +3707,7 @@ void GSRendererHW::EmulateBlending(int rt_alpha_min, int rt_alpha_max, bool& DAT
 		switch (GSConfig.AccurateBlendingUnit)
 		{
 			case AccBlendLevel::Maximum:
-				clr_blend1_2 = false;
+				hw_blend1_2 = false;
 				sw_blending |= true;
 				[[fallthrough]];
 			case AccBlendLevel::Full:
@@ -3732,7 +3732,7 @@ void GSRendererHW::EmulateBlending(int rt_alpha_min, int rt_alpha_max, bool& DAT
 				// Enable sw blending for barriers.
 				sw_blending |= blend_requires_barrier;
 				// Try to do hw blend for clr2 case.
-				sw_blending &= !clr_blend1_2;
+				sw_blending &= !hw_blend1_2;
 				// blend_ad_improved should only run if no other barrier blend is enabled, otherwise restore bit values.
 				if (blend_ad_improved && (sw_blending || prefer_sw_blend))
 				{
@@ -3761,7 +3761,7 @@ void GSRendererHW::EmulateBlending(int rt_alpha_min, int rt_alpha_max, bool& DAT
 			case AccBlendLevel::Maximum:
 				if (m_prim_overlap == PRIM_OVERLAP_NO)
 				{
-					clr_blend1_2 = false;
+					hw_blend1_2 = false;
 					sw_blending |= true;
 				}
 				[[fallthrough]];
@@ -3769,7 +3769,7 @@ void GSRendererHW::EmulateBlending(int rt_alpha_min, int rt_alpha_max, bool& DAT
 				sw_blending |= ((m_conf.ps.blend_c == 1 || (blend_mix && (alpha_c2_high_one || alpha_c0_high_max_one))) && (m_prim_overlap == PRIM_OVERLAP_NO));
 				[[fallthrough]];
 			case AccBlendLevel::High:
-				sw_blending |= (!(clr_blend || blend_mix) && (m_prim_overlap == PRIM_OVERLAP_NO));
+				sw_blending |= (!(hw_blend || blend_mix) && (m_prim_overlap == PRIM_OVERLAP_NO));
 				[[fallthrough]];
 			case AccBlendLevel::Medium:
 				// If prims don't overlap prefer full sw blend on blend_ad_alpha_masked cases.
@@ -3786,7 +3786,7 @@ void GSRendererHW::EmulateBlending(int rt_alpha_min, int rt_alpha_max, bool& DAT
 				// Blending requires reading the framebuffer when there's no overlap.
 				sw_blending |= fbmask_no_overlap;
 				// Try to do hw blend for clr2 case.
-				sw_blending &= !clr_blend1_2;
+				sw_blending &= !hw_blend1_2;
 				// blend_ad_improved should only run if no other barrier blend is enabled, otherwise restore bit values.
 				if (blend_ad_improved && (sw_blending || fbmask_no_overlap))
 				{
@@ -4090,18 +4090,18 @@ void GSRendererHW::EmulateBlending(int rt_alpha_min, int rt_alpha_max, bool& DAT
 		m_conf.ps.blend_d = 0;
 
 		// Care for hw blend value, 6 is for hw/sw, sw blending used.
-		if (blend_flag & BLEND_HW_CLR1)
+		if (blend_flag & BLEND_HW1)
 		{
 			m_conf.ps.blend_hw = 1;
 		}
-		else if (blend_flag & BLEND_HW_CLR2)
+		else if (blend_flag & BLEND_HW2)
 		{
 			if (m_conf.ps.blend_c == 2)
 				m_conf.cb_ps.TA_MaxDepth_Af.a = static_cast<float>(AFIX) / 128.0f;
 
 			m_conf.ps.blend_hw = 2;
 		}
-		else if (blend_flag & BLEND_HW_CLR3)
+		else if (blend_flag & BLEND_HW3)
 		{
 			m_conf.ps.blend_hw = 3;
 		}
