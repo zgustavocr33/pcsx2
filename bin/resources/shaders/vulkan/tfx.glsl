@@ -1150,6 +1150,13 @@ void ps_blend(inout vec4 Color, inout vec4 As_rgba)
 			float max_color = max(max(Color.r, Color.g), Color.b);
 			float color_compensate = 255.0f / max(128.0f, max_color);
 			Color.rgb *= vec3(color_compensate);
+		#elif PS_BLEND_HW == 4
+			// Needed for Cs*(Ad + 1), Cs*(Ad + 1) - Cd*A
+			// What we want to accomplish is to do Cs + Cs*Ad in shader since
+			// hw blending can't be done with alpha value above 1.0f.
+			// Will only work when RT alpha min > 0.
+			vec3 color_blended = Color.rgb * vec3(Af);
+			Color.rgb += color_blended;
 		#endif
 	#endif
 }

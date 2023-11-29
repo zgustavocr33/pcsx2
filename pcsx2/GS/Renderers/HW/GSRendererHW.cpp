@@ -4105,6 +4105,13 @@ void GSRendererHW::EmulateBlending(int rt_alpha_min, int rt_alpha_max, bool& DAT
 		{
 			m_conf.ps.blend_hw = 3;
 		}
+		else if (blend_flag & BLEND_HW4)
+		{
+			// For Cs*(Ad + 1) - Cd*Ad divide the alpha by 255 so it matches the Ad in hw blend,
+			// otherwise for Cs*(Ad + 1) divide by 128.
+			m_conf.ps.blend_hw = 4;
+			m_conf.cb_ps.TA_MaxDepth_Af.a = static_cast<float>(rt_alpha_min) / (m_conf.ps.blend_b == 1 ? 255.0f : 128.0f);
+		}
 
 		if (blend_ad_alpha_masked)
 		{
